@@ -9,6 +9,7 @@ import tensorflow as tf
 
 _THUCNews = "/home/zhiwen/workspace/dataset/THUCTC/THUCNews/**/*.txt"
 def list_thucnews_files(path=_THUCNews):
+    """可到 http://thuctc.thunlp.org/ 下载"""
     return glob.glob(path)
 
 def load_files(files):
@@ -135,18 +136,6 @@ class Tokenizer:
         self.id2char = {int(i):j for i,j in id2char.items()}
         self.char2id = char2id
 
-files = list_thucnews_files()
-train_files, val_files, test_files = train_val_test_split(files)
-
-tokenizer = Tokenizer()
-meta = "tokens.json"
-if os.path.exists(meta):
-    tokenizer.load(meta)
-else:
-    print("tokenize...")
-    tokenizer.fit(files)
-    tokenizer.save(meta)
-
 class DataGenerator:
 
     def __init__(self, files, epochs, tokenizer):
@@ -176,6 +165,18 @@ def create_dataset(files, epochs, batch_size, tokenizer, drop_remainder=True):
     )
     return dl
 
+files = list_thucnews_files()
+train_files, val_files, test_files = train_val_test_split(files)
+
+tokenizer = Tokenizer()
+file = "tokens.json"
+if os.path.exists(file):
+    tokenizer.load(file)
+else:
+    print("tokenize...")
+    tokenizer.fit(files)
+    tokenizer.save(file)
+
 dataset = create_dataset(train_files, epochs=100, batch_size=64, tokenizer=tokenizer)
 dataset_val = create_dataset(val_files, epochs=1, batch_size=64, tokenizer=tokenizer)
 vocab_size = tokenizer.vocab_size
@@ -187,4 +188,5 @@ if __name__ == "__main__":
     # 测试
     for (x, y), _ in iter(dataset):
         print(x.shape, y.shape)
+        break
     

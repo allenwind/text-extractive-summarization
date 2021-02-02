@@ -1,5 +1,7 @@
 # self
 tokens.json
+weights/weights*
+weights/checkpoint
 multi_head_attention.py
 old.py
 TODO.md
