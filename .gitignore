@@ -1,7 +1,7 @@
 # self
-tokens.json
-weights/weights*
+weights/weights.*
 weights/checkpoint
+weights/tokens.json
 multi_head_attention.py
 old.py
 TODO.md

@@ -169,7 +169,7 @@ files = list_thucnews_files()
 train_files, val_files, test_files = train_val_test_split(files)
 
 tokenizer = Tokenizer()
-file = "tokens.json"
+file = "weights/tokens.json"
 if os.path.exists(file):
     tokenizer.load(file)
 else:
