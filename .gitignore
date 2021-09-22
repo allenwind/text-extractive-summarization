@@ -2,9 +2,7 @@
 weights/weights.*
 weights/checkpoint
 weights/tokens.json
-multi_head_attention.py
-old.py
-TODO.md
+*.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

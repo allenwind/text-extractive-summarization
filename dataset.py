@@ -10,7 +10,9 @@ import tensorflow as tf
 _THUCNews = "/home/zhiwen/workspace/dataset/THUCTC/THUCNews/**/*.txt"
 def list_thucnews_files(path=_THUCNews):
     """可到 http://thuctc.thunlp.org/ 下载"""
-    return glob.glob(path)
+    files = glob.glob(path)
+    files.sort()
+    return files
 
 def load_files(files):
     for path in files:
@@ -21,10 +23,11 @@ def load_files(files):
             content = process_content(content)
         yield content, title
 
-def train_val_test_split(files, train_size=0.8, val_size=0.1, test_size=0.1, shuffle=True):
+def train_val_test_split(files, train_size=0.8, val_size=0.1, test_size=0.1, shuffle=True, seed=782):
     # 文件级别的交叉验证
     if shuffle:
-        random.shuffle(files)
+        random.Random(seed).shuffle(files)
+        random.Random(seed ** 2).shuffle(files)
     length = len(files)
     i = int(length * train_size)
     j = int(length * (train_size + val_size))
@@ -71,7 +74,7 @@ class Counter(dict):
 
 class Tokenizer:
 
-    def __init__(self, maxlen=32*12):
+    def __init__(self, maxlen=512):
         self.chars = None
         self.id2char = None
         self.char2id = None
@@ -83,7 +86,7 @@ class Tokenizer:
         self.maxlen = maxlen # content最大长度
         self.filters = set("∵∴!\"#$%&'()[]*+,-./，。！@·……（）【】<>《》?？；‘’“”")
 
-    def fit(self, files, minfreq=32):
+    def fit(self, files, minfreq=48):
         chars = Counter()
         for content, title in load_files(files):
             for c in content:
@@ -105,12 +108,22 @@ class Tokenizer:
             gen = (self.char2id.get(char, self.UNK) for char in text[:self.maxlen-2])
             tokens = [self.START, *gen, self.END]
         else:
-            tokens = [self.char2id.get(char, self.UNK) for char in text[:self.maxlen]]
+            tokens = [self.char2id.get(char, self.UNK) for char in self.truncated_text(text, self.maxlen)]
         return tokens
 
     def decode(self, tokens):
         # tokens转换为text
         return "".join([self.id2char.get(i, "") for i in tokens])
+
+    def truncated_text(self, text, maxlen):
+        # 首尾截断
+        length = len(text)
+        if length <= maxlen:
+            return text
+
+        x = maxlen // 2
+        text = text[:x] + text[-(maxlen - x):]
+        return text
 
     @property
     def vocab_size(self):
@@ -166,7 +179,12 @@ def create_dataset(files, epochs, batch_size, tokenizer, drop_remainder=True):
     return dl
 
 files = list_thucnews_files()
-train_files, val_files, test_files = train_val_test_split(files)
+train_files, val_files, test_files = train_val_test_split(
+    files=files,
+    train_size=0.8,
+    val_size=0.1,
+    test_size=0.1
+)
 
 tokenizer = Tokenizer()
 file = "weights/tokens.json"
@@ -177,8 +195,9 @@ else:
     tokenizer.fit(files)
     tokenizer.save(file)
 
-dataset = create_dataset(train_files, epochs=100, batch_size=64, tokenizer=tokenizer)
-dataset_val = create_dataset(val_files, epochs=1, batch_size=64, tokenizer=tokenizer)
+dataset = create_dataset(train_files, epochs=100, batch_size=128, tokenizer=tokenizer)
+dataset_val = create_dataset(val_files, epochs=1, batch_size=128, tokenizer=tokenizer)
+dataset_test = create_dataset(test_files, epochs=1, batch_size=128, tokenizer=tokenizer)
 vocab_size = tokenizer.vocab_size
 
 # dataset = tf.data.Dataset.from_tensor_slices(train_files)
@@ -186,7 +205,12 @@ vocab_size = tokenizer.vocab_size
 
 if __name__ == "__main__":
     # 测试
-    for (x, y), _ in iter(dataset):
+    print("total files:", len(files))
+    print("train files:", len(train_files))
+    print("valid files:", len(val_files))
+    print("test files:", len(test_files))
+
+    for i, ((x, y), _) in enumerate(iter(dataset)):
         print(x.shape, y.shape)
-        break
-    
+        if i == 10:
+            break
